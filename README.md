@@ -2,6 +2,8 @@
 
 Designate is an OpenStack inspired DNSaaS.
 
+Added an automated method (bash) for launching a Vagrant VM running Designate.
+
 Docs: http://designate.readthedocs.org and some below for now.
 Bugs / Blueprints: http://launchpad.net/moniker
 
