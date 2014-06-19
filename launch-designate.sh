@@ -94,21 +94,39 @@ cat << 'SCRIPTEOF' > "./$prepdesignate"
 	fi
 	
 	dig @localhost openstack.com
+	
+    resp=$(sudo ls -latr /var/lib/mysql | grep "designate" | awk '{print $9}' | tail -n 1)
+	echo "${resp}"
+	if [ "$resp" = "designate" ]; then
+		echo "designate mysql exists"
+	else
+    	echo "designate mysql does not exist so making it"
+		mysql -e 'CREATE DATABASE `designate` CHARACTER SET utf8 COLLATE utf8_general_ci;'
+	fi
 
-	mysql -e 'CREATE DATABASE `designate` CHARACTER SET utf8 COLLATE utf8_general_ci;'
 	sudo designate-manage database init
 	sudo designate-manage database sync
-
-	sudo designate-central &
-	sudo designate-api &
 	
-    resp=$(ps aux | grep "designate" | awk '{print $12}' | tail -n 1)
+    resp=$(ps aux | grep "designate-api" | awk '{print $12}' | tail -n 1)
 	echo "${resp}"
 	if [ "$resp" = "/usr/local/bin/designate-api" ]; then
-    	echo "has designate"
+    	echo "has designate-api"
     else
-    	echo "NOT has designate"
+    	echo "NOT has designate-api so starting it."
+		sudo designate-api &
 	fi
+
+    resp=$(ps aux | grep "designate-central" | awk '{print $12}' | tail -n 1)
+	echo "${resp}"
+	if [ "$resp" = "/usr/local/bin/designate-central" ]; then
+    	echo "has designate-central"
+    else
+    	echo "NOT has designate-central so starting it."
+		sudo designate-central &
+	fi
+	
+	echo "DONE!"
+	exit 1
 SCRIPTEOF
 
 pk="$HOME/.vagrant.d/insecure_private_key"
@@ -121,17 +139,21 @@ fi
 
 scp -P 2222 -o StrictHostKeyChecking=no -i "$pk" "./$prepdesignate" vagrant@127.0.0.1:~/$prepdesignate
 
-vagrant ssh <<-DESIGNATE_EOF
+if [ -f "./$prepdesignate" ]; then 
+	echo "./$prepdesignate exists locally, so cleaning up because it was created dybamically."
+	rm ./$prepdesignate
+fi
+
+vagrant ssh << DESIGNATE_EOF
 
 	pwd
 	ls -latr
 
-	prepdesignate="/home/vagrant/prepdesignate.sh"
-	if [ -f "$prepdesignate" ]; then 
-		echo "$prepdesignate exists"
-    	chmod +x $prepdesignate 
+	if [ -f "/home/vagrant/prepdesignate.sh" ]; then 
+		echo "/home/vagrant/prepdesignate.sh exists"
+    	chmod +x /home/vagrant/prepdesignate.sh 
 	else
-    	echo "$prepdesignate does not exist so Aborting."
+    	echo "/home/vagrant/prepdesignate.sh does not exist so Aborting."
     	exit 1
 	fi
 	
